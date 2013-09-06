@@ -1,26 +1,18 @@
 <html>
 <head>
-<script type="application/javascript">
-function init() {
-    var ws = new WebSocket("ws://localhost:8888/ws/foo");
-    ws.onopen = function() {
-       ws.send("Hello, world");
-    };
-    ws.onmessage = function (evt) {
-       document.getElementById('output').innerHTML += evt.data;
-    };
-}
-
-</script>
 </head>
-<body onLoad="init();">
+<body>
+<h1>Current Chat Rooms</h1>
+<ul>
 {% for room in rooms_manager.get_list() %}
     {% block room %}
-        <li><a href="/chat/{{room.topic}}.html">{{ json_encode(room) }}</li>
+        <li><a target="{{room[0]}}" href="/room/{{room[0]}}.html">{{ room[0] }}</a> ({{ room[1] }})</li>
     {% end %}
 {% end %}
-<div id="output">
-
-</div>
+</ul>
+<form onSubmit="if(this.new_room.value) { window.open('/room/' + this.new_room.value + '.html').focus(); return true;} else { return false; }">
+    New Room: <input type="text" name="new_room">
+    <input type="submit" value="Create Room">
+</form>
 </body>
 </html>

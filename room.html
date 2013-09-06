@@ -8,7 +8,7 @@ function init(room_name) {
     var output = document.getElementById('output');
 
     ws.onopen = function() {
-       ws.send("Hello, world");
+       //ws.send("Hello, world");
     };
     ws.onmessage = function (evt) {
         var data = {};

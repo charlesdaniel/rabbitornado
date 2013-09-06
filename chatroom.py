@@ -1,6 +1,7 @@
 from pika import adapters
 import pika
 
+
 class RoomsManager(object):
     def __init__(self, amqp_url):
         self.amqp_url = amqp_url
@@ -17,6 +18,11 @@ class RoomsManager(object):
             r = self.rooms[i]
             l.append([r.topic, len(r.members)])
         return l
+
+
+
+def DEBUG(*args, **kwargs):
+    print(args, kwargs)
 
 
 class ChatRoom(object):
@@ -36,13 +42,13 @@ class ChatRoom(object):
         print self.connection
 
     def add_member(self, member):
-        print "ADD_MEMBER ", member
+        DEBUG("ADD_MEMBER ", member)
+        self.members.append(member)
         member.handle_message("Hello, welcome to the %s room" % (self.topic))
         member.handle_message("There are currently %d clients" % (len(self.members)))
-        self.members.append(member)
 
     def remove_member(self, member):
-        print "REMOVE_MEMBER ", member
+        DEBUG("REMOVE_MEMBER ", member)
         self.members.remove(member)
 
     def on_connected(self, connection):
@@ -62,18 +68,18 @@ class ChatRoom(object):
 
     def handle_delivery(self, channel, method, header, body):
         for r in self.members:
-            print "SENDING TO MEMBER ", r, " BODY ", body
+            DEBUG("SENDING TO MEMBER ", r, " BODY ", body)
             r.handle_message(body)
         self.channel.basic_ack(method.delivery_tag)
 
-        print "GOT HANDLE DELIVERY ", channel, " METHOD ", method, " HEADER ", header, "\n"
-        print " BODY ", body
+        DEBUG("GOT HANDLE DELIVERY ", channel, " METHOD ", method, " HEADER ", header, "\n")
+        DEBUG(" BODY ", body)
 
     def send(self, message):
         if(self.channel):
             self.channel.basic_publish(exchange='', routing_key=self.topic, body=message)
         else:
-            print "BACK BUFFERING ", message
+            DEBUG("CHANNEL NOT OPEN BACK BUFFERING: ", message)
             self.backbuffer.append(message)
 
 

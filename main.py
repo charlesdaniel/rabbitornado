@@ -6,6 +6,8 @@ import tornado.template
 import chatroom
 import json
 
+def DEBUG(*args,**kwargs):
+    print(args, kwargs)
 
 class MainHandler(tornado.web.RequestHandler):
     def initialize(self, rooms_manager):
@@ -26,10 +28,10 @@ class MainHandler(tornado.web.RequestHandler):
         self.callback = self.get_argument('callback', default=None)
         self.format = self.get_argument('format', default=None)
 
-        print "Looking for room"
+        DEBUG("Looking for room")
         room = self.rooms_manager.find_room(room_name)
-        print "GOT ROOM ", room
-        print "ADDING MEMBER"
+        DEBUG("GOT ROOM ", room)
+        DEBUG("ADDING MEMBER")
         room.add_member(self)
 
     def post(self, room_name):
@@ -40,7 +42,7 @@ class MainHandler(tornado.web.RequestHandler):
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, rooms_manager):
-        print "SETTING UP ROOMS MANAGER ", rooms_manager
+        DEBUG("SETTING UP ROOMS MANAGER ")
         #super.initialize(self)
         self.rooms_manager = rooms_manager
 
@@ -48,7 +50,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.write_message(message)
 
     def open(self, room_name):
-        print "WebSocket opened room ", room_name
+        DEBUG("WebSocket opened room ", room_name)
         self.room_name = room_name
         self.room = self.rooms_manager.find_room(self.room_name)
         self.room.add_member(self)
@@ -57,22 +59,22 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.room.send(message)
 
     def on_close(self):
-        print "WebSocket closed"
+        DEBUG("WebSocket closed")
         self.room.remove_member(self)
 
 
 class PagesHandler(tornado.web.RequestHandler):
     def initialize(self, template_dir, rooms_manager):
-        print "PagesHandler Loading"
+        DEBUG("PagesHandler Loading")
         self.rooms_manager = rooms_manager
         self.loader = tornado.template.Loader(template_dir)
         self.pages = dict()
         for i in ['index.html', 'room.html']:
-            print "Loading Template ", i
+            DEBUG("Loading Template ", i)
             self.pages[i] = self.loader.load(i)
 
     def get(self, *args):
-        print "ARGS IS ", args
+        DEBUG("ARGS IS ", *args)
         room=None
         if(len(args) == 1):
             page = args[0]
@@ -86,10 +88,9 @@ class PagesHandler(tornado.web.RequestHandler):
 
 
 
-
 amqp_url = 'amqp://guest:guest@localhost:5672/%2F'
-
 rooms_manager = chatroom.RoomsManager(amqp_url)
+
 
 application = tornado.web.Application([
     (r"/ws/(\w+)", WebSocketHandler, dict(rooms_manager=rooms_manager)),
@@ -101,4 +102,5 @@ application = tornado.web.Application([
 
 if __name__ == "__main__":
     application.listen(8888)
+    DEBUG("Listening on port http://localhost:8888/")
     tornado.ioloop.IOLoop.instance().start()
