@@ -1,0 +1,26 @@
+<html>
+<head>
+<script type="application/javascript">
+function init() {
+    var ws = new WebSocket("ws://localhost:8888/ws/foo");
+    ws.onopen = function() {
+       ws.send("Hello, world");
+    };
+    ws.onmessage = function (evt) {
+       document.getElementById('output').innerHTML += evt.data;
+    };
+}
+
+</script>
+</head>
+<body onLoad="init();">
+{% for room in rooms_manager.get_list() %}
+    {% block room %}
+        <li><a href="/chat/{{room.topic}}.html">{{ json_encode(room) }}</li>
+    {% end %}
+{% end %}
+<div id="output">
+
+</div>
+</body>
+</html>
