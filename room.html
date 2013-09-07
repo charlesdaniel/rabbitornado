@@ -3,7 +3,7 @@
 <script type="application/javascript">
 var ws;
 function init(room_name) {
-    ws = new WebSocket("ws://localhost:8888/ws/" + room_name);
+    ws = new WebSocket("ws://{{host}}/ws/" + room_name);
     var output_list = document.getElementById('output_list');
     var output = document.getElementById('output');
 

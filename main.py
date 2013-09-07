@@ -17,7 +17,6 @@ def basic_auth(f):
     @functools.wraps(f)
     def wrap_f(self, *args, **kwargs):
         auth_header = self.request.headers.get('Authorization', None)
-        print "AUTH HEADER ", auth_header
         auth_user = None
         if((auth_header != None) and (auth_header.startswith('Basic'))):
             (user, passwd) = base64.decodestring(auth_header[6:]).split(':', 2)
@@ -43,7 +42,6 @@ class MainHandler(tornado.web.RequestHandler):
         if(self.callback):
             self.write("%s(%s);\n" % (self.callback, json.dumps(message)));
         elif(self.format == 'shell'):
-            #self.write("<%s>: %s" % (m
             self.write(message + "\n")
         else:
             self.write(message)
@@ -71,7 +69,6 @@ class MainHandler(tornado.web.RequestHandler):
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, rooms_manager):
         DEBUG("SETTING UP ROOMS MANAGER ")
-        #super.initialize(self)
         self.rooms_manager = rooms_manager
 
     def handle_message(self, message):
@@ -117,7 +114,6 @@ class PagesHandler(tornado.web.RequestHandler):
             
         if(self.pages[page]):
             host = self.request.headers.get('Host', None)
-            print "HOST IS ", host
             self.write(self.pages[page].generate(rooms_manager=self.rooms_manager, room=room, user=self.USER, host=host))
 
 

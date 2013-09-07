@@ -7,6 +7,9 @@ def memory_authenticate(name, password):
         return db[name]
     return None
 
+def full_public(name,password):
+    return dict(name=name, password=password)
+
 db_conn=None
 def db_connect():
     import MySQLdb
@@ -35,4 +38,4 @@ def db_authenticate(name, password):
 
     return user
 
-authenticate=db_authenticate
+authenticate=full_public
