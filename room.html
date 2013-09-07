@@ -50,8 +50,13 @@ function init(room_name) {
     };
 }
 
-function send(sender, message) {
-    ws.send(JSON.stringify({sender: sender, message: message}));
+function send(f) {
+    var sender = f['sender'].value;
+    var message = f['message'].value;
+    if(sender && message) {
+        ws.send(JSON.stringify({sender: sender, message: message}));
+        f['message'].value='';
+    }
 }
 
 </script>
@@ -162,6 +167,7 @@ h2 {
 </style>
 </head>
 <body onLoad="init('{{room}}');">
+<h3>Logged In As: {{user['name']}} (<a href="//logout:logout@{{host}}/">Logout</a>)</h3>
 <h2 id="topic">Room {{room}}: No topic set</h2>
 
 <div id="output">
@@ -169,8 +175,8 @@ h2 {
 
     </ul>
 </div>
-<form onSubmit="send(this['sender'].value, this['message'].value); return false;">
-    <input id="sender" type="text" name="sender" placeholder="Name">:
+<form onSubmit="send(this); return false;">
+    <input id="sender" type="text" name="sender" value="{{user['name']}}" placeholder="Name" style="disabled: true;">:
     <input id="message" type="text" name="message" placeholder="">
     <input id="submit" type="submit">
 </form>

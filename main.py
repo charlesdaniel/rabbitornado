@@ -5,9 +5,35 @@ import tornado.websocket
 import tornado.template
 import chatroom
 import json
+import functools
+import base64
+import authenticator
 
 def DEBUG(*args,**kwargs):
     print(args, kwargs)
+
+
+def basic_auth(f):
+    @functools.wraps(f)
+    def wrap_f(self, *args, **kwargs):
+        auth_header = self.request.headers.get('Authorization', None)
+        print "AUTH HEADER ", auth_header
+        auth_user = None
+        if((auth_header != None) and (auth_header.startswith('Basic'))):
+            (user, passwd) = base64.decodestring(auth_header[6:]).split(':', 2)
+            auth_user = self.USER = authenticator.authenticate(user, passwd)
+
+        if(auth_user == None):
+            self.set_header('WWW-Authenticate', 'Basic realm=rabbitornado')
+            self.set_header('Location', '/')
+            self.set_status(401)
+            self.write('Login needed')
+            self.finish()
+            return False
+
+        return f(self, *args, **kwargs)
+
+    return wrap_f
 
 class MainHandler(tornado.web.RequestHandler):
     def initialize(self, rooms_manager):
@@ -24,6 +50,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.flush()
 
     @tornado.web.asynchronous
+    @basic_auth
     def get(self, room_name):
         self.callback = self.get_argument('callback', default=None)
         self.format = self.get_argument('format', default=None)
@@ -34,6 +61,7 @@ class MainHandler(tornado.web.RequestHandler):
         DEBUG("ADDING MEMBER")
         room.add_member(self)
 
+    @basic_auth
     def post(self, room_name):
         room = self.rooms_manager.find_room(room_name)
         message = self.get_argument('message')
@@ -73,10 +101,14 @@ class PagesHandler(tornado.web.RequestHandler):
             DEBUG("Loading Template ", i)
             self.pages[i] = self.loader.load(i)
 
+    @basic_auth
     def get(self, *args):
-        DEBUG("ARGS IS ", *args)
+        DEBUG("ARGS IS ", args[0])
+        DEBUG("LEN IS ", len(args))
         room=None
-        if(len(args) == 1):
+        if(args[0] == None):
+            page = 'index.html'
+        elif(len(args) == 1):
             page = args[0]
         elif(len(args) == 2):
             room = args[0]
@@ -84,7 +116,9 @@ class PagesHandler(tornado.web.RequestHandler):
                 page = 'room.html'
             
         if(self.pages[page]):
-            self.write(self.pages[page].generate(rooms_manager=self.rooms_manager, room=room))
+            host = self.request.headers.get('Host', None)
+            print "HOST IS ", host
+            self.write(self.pages[page].generate(rooms_manager=self.rooms_manager, room=room, user=self.USER, host=host))
 
 
 

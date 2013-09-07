@@ -3,6 +3,7 @@
 </head>
 <body>
 <h1>Current Chat Rooms</h1>
+<h2>Logged In As: {{user['name']}} (<a href="//logout:logout@{{host}}/">Logout</a>)</h2>
 <ul>
 {% for room in rooms_manager.get_list() %}
     {% block room %}
