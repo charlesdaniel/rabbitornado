@@ -126,6 +126,7 @@ application = tornado.web.Application([
     (r"/ws/(\w+)", WebSocketHandler, dict(rooms_manager=rooms_manager)),
     (r"/room/(\w+)", MainHandler, dict(rooms_manager=rooms_manager)),
     (r"/room", MainHandler, dict(rooms_manager=rooms_manager)),
+    (r"/static/(.+\.(html|css|js))", tornado.web.StaticFileHandler, {"path": "./"}),
     (r"/room/(\w+)(.html)", PagesHandler, dict(template_dir='./', rooms_manager=rooms_manager)),
     (r"/(\w+.html)?", PagesHandler, dict(template_dir='./', rooms_manager=rooms_manager)),
 ])
