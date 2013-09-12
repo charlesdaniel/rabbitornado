@@ -8,6 +8,8 @@ import json
 import functools
 import base64
 import authenticator
+import time
+import pika
 
 def DEBUG(*args,**kwargs):
     print(args, kwargs)
@@ -34,11 +36,21 @@ def basic_auth(f):
 
     return wrap_f
 
-class MainHandler(tornado.web.RequestHandler):
+
+class CurrentUser(object):
+    def get_current_user(self):
+        json_user = self.get_secure_cookie("user")
+        try:
+            user = json.loads(json_user)
+            return user
+        except Exception:
+            return None
+
+class MainHandler(CurrentUser, tornado.web.RequestHandler):
     def initialize(self, rooms_manager):
         self.rooms_manager = rooms_manager
 
-    def handle_message(self, message):
+    def handle_message(self, method, header, message):
         if(self.callback):
             self.write("%s(%s);\n" % (self.callback, json.dumps(message)));
         elif(self.format == 'shell'):
@@ -48,7 +60,8 @@ class MainHandler(tornado.web.RequestHandler):
         self.flush()
 
     @tornado.web.asynchronous
-    @basic_auth
+    #@basic_auth
+    @tornado.web.authenticated
     def get(self, room_name):
         self.callback = self.get_argument('callback', default=None)
         self.format = self.get_argument('format', default=None)
@@ -66,19 +79,26 @@ class MainHandler(tornado.web.RequestHandler):
         room.send(message)
 
 
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
+class WebSocketHandler(CurrentUser, tornado.websocket.WebSocketHandler):
     def initialize(self, rooms_manager):
         DEBUG("SETTING UP ROOMS MANAGER ")
         self.rooms_manager = rooms_manager
 
-    def handle_message(self, message):
+    def handle_message(self, method, header, message):
+        print "WS: GOT MESSAGE METHOD ", method, " HEADER ", header, " MESSAGE ", message
         self.write_message(message)
 
+    #@basic_auth
+    @tornado.web.authenticated
     def open(self, room_name):
+        self.USER = self.get_current_user()
         DEBUG("WebSocket opened room ", room_name)
         self.room_name = room_name
-        self.room = self.rooms_manager.find_room(self.room_name)
+        self.room = self.rooms_manager.find_room('room.' + self.room_name)
         self.room.add_member(self)
+        print "USER IS ", self.USER["name"]
+        self.room_privmsg = self.rooms_manager.find_room('user.' + self.USER["name"] + '.' + self.room_name )
+        self.room_privmsg.add_member(self)
 
     def on_message(self, message):
         self.room.send(message)
@@ -88,7 +108,28 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.room.remove_member(self)
 
 
-class PagesHandler(tornado.web.RequestHandler):
+class LoginHandler(CurrentUser, tornado.web.RequestHandler):
+    def initialize(self, template_dir):
+        self.loader = tornado.template.Loader(template_dir)
+        self.login_page = self.loader.load('login.html')
+        
+    def get(self, *args):
+        r = self.get_argument("next", self.get_argument("r", "/"))
+        self.write(self.login_page.generate(r=r))
+        
+    def post(self, *args):
+        name = self.get_argument("name")
+        password = self.get_argument("password")
+        user = {
+        	"name": name,
+            "password": password,
+            "ts": time.time()
+        }
+        self.set_secure_cookie("user", json.dumps(user))
+        redir = self.get_argument("r", "/")
+        self.redirect(redir)
+        
+class PagesHandler(CurrentUser, tornado.web.RequestHandler):
     def initialize(self, template_dir, rooms_manager):
         DEBUG("PagesHandler Loading")
         self.rooms_manager = rooms_manager
@@ -98,8 +139,10 @@ class PagesHandler(tornado.web.RequestHandler):
             DEBUG("Loading Template ", i)
             self.pages[i] = self.loader.load(i)
 
-    @basic_auth
+    #@basic_auth
+    @tornado.web.authenticated
     def get(self, *args):
+        self.USER = self.get_current_user()
         DEBUG("ARGS IS ", args[0])
         DEBUG("LEN IS ", len(args))
         room=None
@@ -119,8 +162,13 @@ class PagesHandler(tornado.web.RequestHandler):
 
 
 amqp_url = 'amqp://guest:guest@localhost:5672/%2F'
-rooms_manager = chatroom.RoomsManager(amqp_url)
+rooms_manager = chatroom.RoomsManager(amqp_url, {"tornado": True})
 
+
+settings = {
+    "cookie_secret": "__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
+    "login_url": "/login",
+}
 
 application = tornado.web.Application([
     (r"/ws/(\w+)", WebSocketHandler, dict(rooms_manager=rooms_manager)),
@@ -129,9 +177,11 @@ application = tornado.web.Application([
     (r"/static/(.+\.(html|css|js))", tornado.web.StaticFileHandler, {"path": "./"}),
     (r"/room/(\w+)(.html)", PagesHandler, dict(template_dir='./', rooms_manager=rooms_manager)),
     (r"/(\w+.html)?", PagesHandler, dict(template_dir='./', rooms_manager=rooms_manager)),
-])
+    (r"/login", LoginHandler, dict(template_dir='./')),
+], **settings)
 
 if __name__ == "__main__":
     application.listen(8888)
     DEBUG("Listening on port http://localhost:8888/")
     tornado.ioloop.IOLoop.instance().start()
+    
