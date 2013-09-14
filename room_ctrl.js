@@ -34,7 +34,7 @@ rtApp.controller('RoomCtrl', ['$scope', '$element', function($scope, $element) {
                     $scope.topic = x[2];
                     break;
                 case 'me':
-                    inner_html = '<span class="me">' + data.sender + ' ' + x[2] + '</span>';
+                    inner_html = '<span class="me">' + data.from + ' ' + x[2] + '</span>';
                     break;
                 case 'raw':
                     inner_html = '<span class="raw">' + x[2] + '</span>';
@@ -42,11 +42,11 @@ rtApp.controller('RoomCtrl', ['$scope', '$element', function($scope, $element) {
             }
         }
         else {
-            inner_html = '<span class="sender">' + data.sender + '</span>' + data.message;
+            inner_html = '<span class="sender">' + data.from + '</span>' + data.message;
         }
 
         if(inner_html) {
-            var d = new Date();
+            var d = new Date(data.ts);
             var ts = d.toLocaleTimeString();
             inner_html = '<span class="ts">' + ts + '</span>' + inner_html;
             /*
@@ -69,7 +69,7 @@ rtApp.controller('RoomCtrl', ['$scope', '$element', function($scope, $element) {
         var sender = $scope.sender;
         var message = $scope.message;
         if(sender && message) {
-            $scope.ws.send(JSON.stringify({sender: sender, message: message}));
+            $scope.ws.send(JSON.stringify({ts: Date.now(), from: sender, to: '*', topic: $scope.room_name, content_type: 'text/html', message: message}));
             $scope.message = '';
         }
     }
