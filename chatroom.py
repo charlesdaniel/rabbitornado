@@ -45,11 +45,12 @@ class RoomsManager(object):
             self.rooms[room_name] = ChatRoom(self.channel, self.exchange, room_name)
         return self.rooms[room_name]
 
-    def get_list(self):
+    def get_list(self, prefix=''):
         l = list()
         for i in self.rooms:
-            r = self.rooms[i]
-            l.append([r.topic, len(r.members)])
+            if(i.startswith(prefix)):
+                r = self.rooms[i]
+                l.append([r.topic, len(r.members)])
         return l
 
     def start(self):
